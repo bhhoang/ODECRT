@@ -5,7 +5,6 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.layers.convolutional import Conv2D, MaxPooling2D
 import matplotlib.pyplot as plt
 
-
 # Character Labels
 labels = [str(i) for i in range(10)] + \
          [chr(i) for i in range(ord('A'), ord('Z')+1)] + \
@@ -17,7 +16,7 @@ train_data_dir = 'dataset/train'
 validation_data_dir = 'dataset/valid'
 test_data_dir = 'dataset/test'
 # Hyperparameters
-epochs = 13
+epochs = 15
 batch_size = 32
 num_classes = len(labels)
 
@@ -68,12 +67,11 @@ model = Sequential([
     Dense(num_classes, activation='softmax')
 ])
 
-#print(model.summary())
 # Compile the model
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',
               metrics=['accuracy'])
-
+print(model.summary())
 # Train the model
 history = model.fit(
           train_generator,
