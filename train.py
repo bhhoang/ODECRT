@@ -4,6 +4,7 @@ from keras.layers import Dense, Dropout, Flatten
 from keras.preprocessing.image import ImageDataGenerator
 from keras.layers.convolutional import Conv2D, MaxPooling2D
 import matplotlib.pyplot as plt
+
 # Character Labels
 labels = [str(i) for i in range(10)] + \
          [chr(i) for i in range(ord('A'), ord('Z')+1)] + \
@@ -22,9 +23,11 @@ num_classes = len(labels)
 # Data Augmentation
 datagen = ImageDataGenerator(
     rescale=1./255,
-    rotation_range=15,
-    horizontal_flip=True,
-    vertical_flip=True
+    #rotation_range=2,
+    #width_shift_range=0.01,
+    #height_shift_range=0.01,
+    #horizontal_flip=False,
+    #vertical_flip=False
 )
 
 train_generator = datagen.flow_from_directory(
@@ -52,25 +55,23 @@ test_generator = datagen.flow_from_directory(
 # Model Architecture
 model = Sequential([
     Conv2D(32, (3, 3), activation='relu', input_shape=(img_width, img_height, 1)),
-    Dropout(0.2),
     MaxPooling2D((2, 2)),
-
     Conv2D(64, (3, 3), activation='relu'),
-    Dropout(0.2),
+    MaxPooling2D((2, 2)),
+    Conv2D(128, (3, 3), activation='relu'),
     MaxPooling2D((2, 2)),
 
-    Conv2D(128, (3, 3), activation='relu'),
-    Dropout(0.2),
     Flatten(),
-
     Dense(310, activation='relu'),
+    Dropout(0.1),
     Dense(num_classes, activation='softmax')
 ])
+
 # Compile the model
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',
               metrics=['accuracy'])
-
+print(model.summary())
 # Train the model
 history = model.fit(
           train_generator,
