@@ -1,20 +1,32 @@
 package vn.edu.usth.ocrapp
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ContentValues
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
+import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.coordinatorlayout.widget.CoordinatorLayout
+import androidx.lifecycle.viewModelScope
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.launch
+
+import kotlinx.serialization.json.*
 
 import vn.edu.usth.ocrapp.databinding.ActivityMainBinding
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -31,30 +43,45 @@ class MainActivity : AppCompatActivity() {
             if (uri == null) {
                 return@registerForActivityResult
             }
-            viewModel.setImageUri(uri)
+
+            val inputStream = contentResolver.openInputStream(uri)
+            val byteArray = inputStream?.readBytes()
+            val file = File.createTempFile("image", ".jpg", cacheDir)
+            file.writeBytes(byteArray!!)
+            viewModel.file = file
+
+            Log.d("FILE", file.toString())
             uploadButton.visibility = View.VISIBLE
             Snackbar.make(coordinatorLayout, "Image selected", Snackbar.LENGTH_LONG)
                 .setAction("Undo") {
                     toggleGroup.clearChecked()
-                    viewModel.resetImageUri()
+                    viewModel.file = null
                     uploadButton.visibility = View.INVISIBLE
                 }
                 .show()
-        }
+            }
+
     private val takePictureLauncher =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
             if (!success) {
                 return@registerForActivityResult
             }
-            viewModel.setImageUri(cameraResultUri)
+            val inputStream = contentResolver.openInputStream(cameraResultUri)
+            val byteArray = inputStream?.readBytes()
+            val file = File.createTempFile("image", ".jpg", cacheDir)
+            file.writeBytes(byteArray!!)
+            viewModel.file = file
+
             uploadButton.visibility = View.VISIBLE
             Snackbar.make(coordinatorLayout, "Image selected", Snackbar.LENGTH_LONG)
                 .setAction("Undo") {
                     toggleGroup.clearChecked()
-                    viewModel.resetImageUri()
+                    viewModel.file = null
                     uploadButton.visibility = View.INVISIBLE
                 }
                 .show()
+
+
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +105,7 @@ class MainActivity : AppCompatActivity() {
         cameraButton.setOnClickListener() {
             // Open camera
             val timestamp = System.currentTimeMillis()
+
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, "IMG_${timestamp}.jpg")
                 put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
@@ -86,12 +114,36 @@ class MainActivity : AppCompatActivity() {
             cameraResultUri = contentResolver.insert(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                 values
-            ) ?: return@setOnClickListener
+            )!!
+            Log.d("URI", cameraResultUri.toString())
             takePictureLauncher.launch(cameraResultUri)
         }
 
         uploadButton.setOnClickListener() {
-            // Upload image
+            toggleGroup.clearChecked()
+            uploadButton.visibility = View.INVISIBLE
+            progressBar.visibility = View.VISIBLE
+
+            viewModel.viewModelScope.launch {
+                val result = viewModel.uploadImage()
+                val resultObj = Json.decodeFromString<ResultData>(result)
+                val resultContent = resultObj.result
+
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle("Result")
+                    .setMessage(resultContent)
+                    .setNegativeButton("Close") { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    .setPositiveButton("Copy") { _, _ ->
+                        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("result", resultContent)
+                        clipboard.setPrimaryClip(clip)
+                    }
+                    .show()
+                viewModel.file = null
+                progressBar.visibility = View.INVISIBLE
+            }
         }
     }
 }
