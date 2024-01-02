@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">OCR App</string>
+    <string name="Choose_your_image">Choose your image\n</string>
+    <string name="From_storage">From storage</string>
+    <string name="From_camera">From camera</string>
+    <string name="Get_your_image_from">Get your image from</string>
+    <string name="Storage">Storage</string>
+    <string name="Camera">Camera</string>
+    <string name="upload">Upload</string>
+</resources>
